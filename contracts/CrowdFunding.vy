@@ -1,4 +1,4 @@
-# @version ^0.2.0
+# @version ^0.3.2
 # Crowdfunding Project v0.1.0
 
 
@@ -9,19 +9,22 @@ struct Donor:
   donated_amount: uint256 # donated value
 
 # contract owner
-owner: address
+owner: public(address)
 
 # contract donors
-donors: HashMap[address, Donor]
+donors: public(HashMap[address, Donor])
 
 # contract goal
-goal: uint256
+goal: public(uint256)
 
 # currently reached value
-current_reached: uint256
+current_reached: public(uint256)
 
 # contract deadline
-deadline: uint256
+deadline: public(uint256)
+
+# contract goal status
+goal_status: public(bool)
 
 
 # ------------- Internal useful methods ------------- #
@@ -39,18 +42,19 @@ def caller_is_owner(_caller:address) -> bool:
 
 @internal
 def goal_is_met() -> bool:
-  return self.balance >= self.goal 
-
+  self.goal_status = self.goal_status or self.balance >= self.goal
+  return self.goal_status
 
 # ------------- External methods ------------- #
 
 
 @external
-def __init__(_goal: uint256, _deadline:uint256):
-  assert block.timestamp < _deadline, "Deadline is before current time"
+def __init__(goal: uint256, deadline:uint256):
+  assert block.timestamp < deadline, "Deadline is before current time"
   self.owner = msg.sender
-  self.goal = _goal
-  self.deadline = _deadline
+  self.goal = goal
+  self.goal_status = False
+  self.deadline = deadline
 
 
 @external
@@ -85,7 +89,9 @@ def claim_refund():
   # only donors are able to refund
   assert self.donors[msg.sender].donated_amount > 0, "Only donors are able to claim refund"
 
+  refund_amount:uint256 = self.donors[msg.sender].donated_amount
   send(msg.sender, self.donors[msg.sender].donated_amount)
+  self.donors[msg.sender].donated_amount = 0
 
 
 # ------------- Readonly methods ------------- #
